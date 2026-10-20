@@ -1,28 +1,130 @@
 <Window x:Class="QueueingCalculator.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Single Server Queueing Calculator" Height="620" Width="460"
+        Title="Queueing Calculator and Simulator" Height="720" Width="900"
         WindowStartupLocation="CenterScreen">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="20">
-            <TextBlock Text="Select model" FontWeight="Bold" />
-            <ComboBox x:Name="cmbModel" Margin="0,5,0,10"
-                      SelectionChanged="cmbModel_SelectionChanged" />
-            <Button x:Name="btnMode" Padding="6" Margin="0,0,0,10" Click="btnMode_Click" />
-            <TextBlock x:Name="lblInfo" TextWrapping="Wrap" Margin="0,0,0,15" />
+    <TabControl>
 
-            <TextBlock x:Name="lbl1" />
-            <TextBox x:Name="txt1" Margin="0,2,0,8" />
-            <TextBlock x:Name="lbl2" />
-            <TextBox x:Name="txt2" Margin="0,2,0,8" />
-            <TextBlock x:Name="lbl3" />
-            <TextBox x:Name="txt3" Margin="0,2,0,8" />
-            <TextBlock x:Name="lbl4" />
-            <TextBox x:Name="txt4" Margin="0,2,0,8" />
+        <!-- TAB 1: the calculator (same controls as before) -->
+        <TabItem Header="Calculator">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="20">
+                    <TextBlock Text="Select model" FontWeight="Bold" />
+                    <ComboBox x:Name="cmbModel" Margin="0,5,0,10"
+                              SelectionChanged="cmbModel_SelectionChanged" />
+                    <Button x:Name="btnMode" Padding="6" Margin="0,0,0,10" Click="btnMode_Click" />
+                    <TextBlock x:Name="lblInfo" TextWrapping="Wrap" Margin="0,0,0,15" />
 
-            <Button x:Name="btnCalculate" Content="Calculate" Padding="6"
-                    Margin="0,10,0,15" Click="btnCalculate_Click" />
-            <TextBlock x:Name="txtResult" FontFamily="Consolas" TextWrapping="Wrap" />
-        </StackPanel>
-    </ScrollViewer>
+                    <TextBlock x:Name="lbl1" />
+                    <TextBox x:Name="txt1" Margin="0,2,0,8" />
+                    <TextBlock x:Name="lbl2" />
+                    <TextBox x:Name="txt2" Margin="0,2,0,8" />
+                    <TextBlock x:Name="lbl3" />
+                    <TextBox x:Name="txt3" Margin="0,2,0,8" />
+                    <TextBlock x:Name="lbl4" />
+                    <TextBox x:Name="txt4" Margin="0,2,0,8" />
+
+                    <Button x:Name="btnCalculate" Content="Calculate" Padding="6"
+                            Margin="0,10,0,15" Click="btnCalculate_Click" />
+                    <TextBlock x:Name="txtResult" FontFamily="Consolas" TextWrapping="Wrap" />
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
+        <!-- TAB 2: the simulation -->
+        <TabItem Header="Simulation">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="20">
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,10"
+                               Text="Normal and Express customers are simulated as two separate streams, each with its own counters. Use one time unit (minutes) everywhere. Put 0 counters to skip a stream." />
+                    <Button x:Name="btnPreset" Content="Load Carrefour data (our real values)" Padding="6"
+                            Margin="0,0,0,10" Click="btnPreset_Click" />
+
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="260" />
+                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="120" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="Normal" FontWeight="Bold" />
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="Express" FontWeight="Bold" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Arrival rate (lambda per minute)" Margin="0,5,0,0" />
+                        <TextBox x:Name="txtNLambda" Grid.Row="1" Grid.Column="1" Margin="0,2,8,2" />
+                        <TextBox x:Name="txtELambda" Grid.Row="1" Grid.Column="2" Margin="0,2,8,2" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Mean service time E[S] (minutes)" Margin="0,5,0,0" />
+                        <TextBox x:Name="txtNMean" Grid.Row="2" Grid.Column="1" Margin="0,2,8,2" />
+                        <TextBox x:Name="txtEMean" Grid.Row="2" Grid.Column="2" Margin="0,2,8,2" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Variance of service time" Margin="0,5,0,0" />
+                        <TextBox x:Name="txtNVar" Grid.Row="3" Grid.Column="1" Margin="0,2,8,2" />
+                        <TextBox x:Name="txtEVar" Grid.Row="3" Grid.Column="2" Margin="0,2,8,2" />
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Number of counters open" Margin="0,5,0,0" />
+                        <TextBox x:Name="txtNServers" Grid.Row="4" Grid.Column="1" Margin="0,2,8,2" />
+                        <TextBox x:Name="txtEServers" Grid.Row="4" Grid.Column="2" Margin="0,2,8,2" />
+                    </Grid>
+
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="260" />
+                            <ColumnDefinition Width="120" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="Simulation length (minutes)" Margin="0,5,0,0" />
+                        <TextBox x:Name="txtDuration" Grid.Row="0" Grid.Column="1" Text="87" Margin="0,2,8,2" />
+
+                        <TextBlock Grid.Row="1" Text="Patience (minutes, 0 = never leaves)" Margin="0,5,0,0" />
+                        <TextBox x:Name="txtPatience" Grid.Row="1" Grid.Column="1" Text="0" Margin="0,2,8,2" />
+
+                        <TextBlock Grid.Row="2" Text="Payment failure probability (0 to 1)" Margin="0,5,0,0" />
+                        <TextBox x:Name="txtPayFail" Grid.Row="2" Grid.Column="1" Text="0" Margin="0,2,8,2" />
+
+                        <TextBlock Grid.Row="3" Text="Seed (empty = different run each time)" Margin="0,5,0,0" />
+                        <TextBox x:Name="txtSeed" Grid.Row="3" Grid.Column="1" Margin="0,2,8,2" />
+                    </Grid>
+
+                    <CheckBox x:Name="chkNormalService" Margin="0,0,0,10"
+                              Content="Service time follows a Normal distribution (uses the variance). Unchecked = Exponential." />
+
+                    <Button x:Name="btnRun" Content="Run simulation" Padding="6" Margin="0,0,0,15" Click="btnRun_Click" />
+
+                    <TextBlock x:Name="txtSimResult" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,0,0,15" />
+
+                    <TextBlock Text="Customer table" FontWeight="Bold" Margin="0,0,0,5" />
+                    <DataGrid x:Name="dgCustomers" Height="300" AutoGenerateColumns="False"
+                              IsReadOnly="True" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="#" Binding="{Binding Id}" />
+                            <DataGridTextColumn Header="Type" Binding="{Binding Stream}" />
+                            <DataGridTextColumn Header="Arrival" Binding="{Binding ArrivalTime, StringFormat=F2}" />
+                            <DataGridTextColumn Header="Start" Binding="{Binding StartTime, StringFormat=F2}" />
+                            <DataGridTextColumn Header="Service" Binding="{Binding ServiceTime, StringFormat=F2}" />
+                            <DataGridTextColumn Header="End" Binding="{Binding EndTime, StringFormat=F2}" />
+                            <DataGridTextColumn Header="Wait" Binding="{Binding WaitingTime, StringFormat=F2}" />
+                            <DataGridTextColumn Header="Turnaround" Binding="{Binding TurnaroundTime, StringFormat=F2}" />
+                            <DataGridTextColumn Header="Counter" Binding="{Binding Server}" />
+                            <DataGridTextColumn Header="Outcome" Binding="{Binding Outcome}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+
+    </TabControl>
 </Window>
