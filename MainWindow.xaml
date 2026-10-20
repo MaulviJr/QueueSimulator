@@ -1,0 +1,28 @@
+<Window x:Class="QueueingCalculator.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Single Server Queueing Calculator" Height="620" Width="460"
+        WindowStartupLocation="CenterScreen">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20">
+            <TextBlock Text="Select model" FontWeight="Bold" />
+            <ComboBox x:Name="cmbModel" Margin="0,5,0,10"
+                      SelectionChanged="cmbModel_SelectionChanged" />
+            <Button x:Name="btnMode" Padding="6" Margin="0,0,0,10" Click="btnMode_Click" />
+            <TextBlock x:Name="lblInfo" TextWrapping="Wrap" Margin="0,0,0,15" />
+
+            <TextBlock x:Name="lbl1" />
+            <TextBox x:Name="txt1" Margin="0,2,0,8" />
+            <TextBlock x:Name="lbl2" />
+            <TextBox x:Name="txt2" Margin="0,2,0,8" />
+            <TextBlock x:Name="lbl3" />
+            <TextBox x:Name="txt3" Margin="0,2,0,8" />
+            <TextBlock x:Name="lbl4" />
+            <TextBox x:Name="txt4" Margin="0,2,0,8" />
+
+            <Button x:Name="btnCalculate" Content="Calculate" Padding="6"
+                    Margin="0,10,0,15" Click="btnCalculate_Click" />
+            <TextBlock x:Name="txtResult" FontFamily="Consolas" TextWrapping="Wrap" />
+        </StackPanel>
+    </ScrollViewer>
+</Window>
