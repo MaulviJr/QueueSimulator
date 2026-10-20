@@ -13,6 +13,9 @@ namespace QueueingCalculator
         public double L;
         public double Wq;
         public double W;
+        public int Servers = 1;
+        public double P0;
+        public double ProbWait;
         public Customer AverageCustomer;
 
         void BuildAverageCustomer()
@@ -26,6 +29,7 @@ namespace QueueingCalculator
 
         public bool MM1(double lambda, double mu)
         {
+            Servers = 1;
             Lambda = lambda;
             Mu = mu;
             Rho = Lambda / Mu;
@@ -44,8 +48,51 @@ namespace QueueingCalculator
             return true;
         }
 
+        // M/M/c: c identical servers, one shared queue.
+        // Rho is the utilization of each server: lambda / (c * mu).
+        public bool MMc(double lambda, double mu, int c)
+        {
+            Servers = c;
+            Lambda = lambda;
+            Mu = mu;
+            Rho = Lambda / (c * Mu);
+
+            if (Rho >= 1)
+            {
+                return false;
+            }
+
+            double a = Lambda / Mu;      // offered load
+            double sum = 0;              // sum of a^n / n! for n = 0 .. c-1
+            double term = 1;             // a^n / n!, built step by step so nothing overflows
+
+            for (int n = 0; n < c; n++)
+            {
+                if (n > 0)
+                {
+                    term = term * a / n;
+                }
+                sum += term;
+            }
+
+            double lastTerm = term * a / c;                // a^c / c!
+            double waitPart = lastTerm / (1 - Rho);        // a^c / (c! (1 - rho))
+
+            P0 = 1 / (sum + waitPart);
+            ProbWait = waitPart * P0;                      // Erlang C: probability a customer has to wait
+
+            Idle = 1 - Rho;
+            Lq = ProbWait * Rho / (1 - Rho);
+            Wq = Lq / Lambda;
+            W = Wq + 1 / Mu;
+            L = Lambda * W;
+            BuildAverageCustomer();
+            return true;
+        }
+
         public bool MG1(double lambda, double meanService, double varService)
         {
+            Servers = 1;
             Lambda = lambda;
             Mu = 1 / meanService;
             Rho = Lambda / Mu;
@@ -66,6 +113,7 @@ namespace QueueingCalculator
 
         public bool GG1(double meanArrival, double varArrival, double meanService, double varService)
         {
+            Servers = 1;
             MeanArrival = meanArrival;
             Lambda = 1 / meanArrival;
             Mu = 1 / meanService;

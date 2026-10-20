@@ -12,6 +12,7 @@ namespace QueueingCalculator
         {
             InitializeComponent();
             cmbModel.Items.Add("M/M/1");
+            cmbModel.Items.Add("M/M/c");
             cmbModel.Items.Add("M/G/1");
             cmbModel.Items.Add("G/G/1");
             cmbModel.SelectedIndex = 0;
@@ -21,9 +22,13 @@ namespace QueueingCalculator
         {
             if (cmbModel.SelectedIndex == 1)
             {
-                return ModelType.MG1;
+                return ModelType.MMc;
             }
             if (cmbModel.SelectedIndex == 2)
+            {
+                return ModelType.MG1;
+            }
+            if (cmbModel.SelectedIndex == 3)
             {
                 return ModelType.GG1;
             }
@@ -60,6 +65,16 @@ namespace QueueingCalculator
             return value > 0;
         }
 
+        // Whole number of servers, between 1 and 200.
+        bool TryReadServers(TextBox box, out int value)
+        {
+            if (!int.TryParse(box.Text, out value))
+            {
+                return false;
+            }
+            return value >= 1 && value <= 200;
+        }
+
         void ShowFields()
         {
             txtResult.Text = "";
@@ -81,10 +96,18 @@ namespace QueueingCalculator
 
             if (model == ModelType.MM1)
             {
-                lblInfo.Text = "Poisson arrivals, exponential service. Needs the arrival and service values.";
+                lblInfo.Text = "Poisson arrivals, exponential service, one server. Needs the arrival and service values.";
                 SetField(lbl1, txt1, arrival);
                 SetField(lbl2, txt2, service);
                 SetField(lbl3, txt3, null);
+                SetField(lbl4, txt4, null);
+            }
+            else if (model == ModelType.MMc)
+            {
+                lblInfo.Text = "Poisson arrivals, exponential service, c identical servers with one shared queue. The service value is for ONE server. Needs the arrival and service values and the number of servers.";
+                SetField(lbl1, txt1, arrival);
+                SetField(lbl2, txt2, service);
+                SetField(lbl3, txt3, "Number of servers (c), a whole number from 1 to 200");
                 SetField(lbl4, txt4, null);
             }
             else if (model == ModelType.MG1)
@@ -144,6 +167,33 @@ namespace QueueingCalculator
                 {
                     text += "Utilization (rho) = " + calc.Rho.ToString("F4") + "\n";
                     text += "Idle proportion    = " + calc.Idle.ToString("F4") + "\n";
+                }
+            }
+            else if (model == ModelType.MMc)
+            {
+                int servers;
+                if (!TryRead(txt1, false, out a) || !TryRead(txt2, false, out b) || !TryReadServers(txt3, out servers))
+                {
+                    MessageBox.Show("Please enter valid positive numbers. The number of servers must be a whole number from 1 to 200.");
+                    return;
+                }
+
+                double lambda = a;
+                double mu = b;
+                if (!useRates)
+                {
+                    lambda = 1 / a;
+                    mu = 1 / b;
+                }
+
+                stable = calc.MMc(lambda, mu, servers);
+                if (stable)
+                {
+                    text += "Servers (c)                 = " + calc.Servers + "\n";
+                    text += "Utilization per server (rho) = " + calc.Rho.ToString("F4") + "\n";
+                    text += "Idle proportion              = " + calc.Idle.ToString("F4") + "\n";
+                    text += "P0 (system empty)            = " + calc.P0.ToString("F4") + "\n";
+                    text += "P(customer waits)           = " + calc.ProbWait.ToString("F4") + "\n";
                 }
             }
             else if (model == ModelType.MG1)
