@@ -12,6 +12,12 @@
                     <TextBlock Text="Select model" FontWeight="Bold" />
                     <ComboBox x:Name="cmbModel" Margin="0,5,0,10"
                               SelectionChanged="cmbModel_SelectionChanged" />
+                    <TextBlock x:Name="lblArrDist" Text="Arrival time distribution" FontWeight="Bold" />
+                    <ComboBox x:Name="cmbArrDist" Margin="0,5,0,10"
+                              SelectionChanged="cmbDist_SelectionChanged" />
+                    <TextBlock x:Name="lblSvcDist" Text="Service time distribution" FontWeight="Bold" />
+                    <ComboBox x:Name="cmbSvcDist" Margin="0,5,0,10"
+                              SelectionChanged="cmbDist_SelectionChanged" />
                     <Button x:Name="btnMode" Padding="6" Margin="0,0,0,10" Click="btnMode_Click" />
                     <TextBlock x:Name="lblInfo" TextWrapping="Wrap" Margin="0,0,0,15" />
 
@@ -87,7 +93,7 @@
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Text="Simulation length (minutes)" Margin="0,5,0,0" />
-                        <TextBox x:Name="txtDuration" Grid.Row="0" Grid.Column="1" Text="87" Margin="0,2,8,2" />
+                        <TextBox x:Name="txtDuration" Grid.Row="0" Grid.Column="1" Text="88" Margin="0,2,8,2" />
 
                         <TextBlock Grid.Row="1" Text="Patience (minutes, 0 = never leaves)" Margin="0,5,0,0" />
                         <TextBox x:Name="txtPatience" Grid.Row="1" Grid.Column="1" Text="0" Margin="0,2,8,2" />

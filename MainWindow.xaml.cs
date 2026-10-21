@@ -1,21 +1,38 @@
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 
 namespace QueueingCalculator
 {
+    // The Calculator tab. (The Simulation tab code is in MainWindow.Simulation.cs.)
     public partial class MainWindow : Window
     {
         QueueCalculator calc = new QueueCalculator();
         bool useRates = true;
+        bool loading = true;     // true while the window is being set up
 
         public MainWindow()
         {
             InitializeComponent();
+
             cmbModel.Items.Add("M/M/1");
             cmbModel.Items.Add("M/M/c");
             cmbModel.Items.Add("M/G/1");
             cmbModel.Items.Add("G/G/1");
+
+            string[] dists = { "Exponential", "Gamma", "Normal", "Uniform" };
+            foreach (string d in dists)
+            {
+                cmbArrDist.Items.Add(d);
+                cmbSvcDist.Items.Add(d);
+            }
+
+            cmbArrDist.SelectedIndex = 0;
+            cmbSvcDist.SelectedIndex = 1;
             cmbModel.SelectedIndex = 0;
+
+            loading = false;
+            ShowFields();
         }
 
         ModelType GetModel()
@@ -35,6 +52,23 @@ namespace QueueingCalculator
             return ModelType.MM1;
         }
 
+        DistType GetDist(ComboBox box)
+        {
+            if (box.SelectedIndex == 1)
+            {
+                return DistType.Gamma;
+            }
+            if (box.SelectedIndex == 2)
+            {
+                return DistType.Normal;
+            }
+            if (box.SelectedIndex == 3)
+            {
+                return DistType.Uniform;
+            }
+            return DistType.Exponential;
+        }
+
         void SetField(TextBlock label, TextBox box, string text)
         {
             box.Text = "";
@@ -49,6 +83,20 @@ namespace QueueingCalculator
                 label.Text = text;
                 label.Visibility = Visibility.Visible;
                 box.Visibility = Visibility.Visible;
+            }
+        }
+
+        void SetCombo(TextBlock label, ComboBox box, bool visible)
+        {
+            if (visible)
+            {
+                label.Visibility = Visibility.Visible;
+                box.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                label.Visibility = Visibility.Collapsed;
+                box.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -75,18 +123,63 @@ namespace QueueingCalculator
             return value >= 1 && value <= 200;
         }
 
+        // The labels of the boxes needed for one distribution.
+        // role is "Arrival" or "Service".
+        List<string> LabelsFor(DistType type, string role)
+        {
+            List<string> list = new List<string>();
+
+            if (type == DistType.Exponential)
+            {
+                if (role == "Arrival")
+                {
+                    if (useRates)
+                    {
+                        list.Add("Arrival rate (lambda)");
+                    }
+                    else
+                    {
+                        list.Add("Mean inter-arrival time E[A]");
+                    }
+                }
+                else
+                {
+                    if (useRates)
+                    {
+                        list.Add("Service rate (mu)");
+                    }
+                    else
+                    {
+                        list.Add("Mean service time E[S]");
+                    }
+                }
+            }
+            else if (type == DistType.Gamma)
+            {
+                list.Add(role + ": shape K");
+                list.Add(role + ": scale theta");
+            }
+            else if (type == DistType.Normal)
+            {
+                list.Add(role + ": mean");
+                list.Add(role + ": standard deviation");
+            }
+            else
+            {
+                list.Add(role + ": minimum");
+                list.Add(role + ": maximum");
+            }
+
+            return list;
+        }
+
         void ShowFields()
         {
             txtResult.Text = "";
             ModelType model = GetModel();
 
-            string arrival = "Mean inter-arrival time E[A]";
-            string service = "Mean service time E[S]";
-
             if (useRates)
             {
-                arrival = "Arrival rate (lambda)";
-                service = "Service rate (mu)";
                 btnMode.Content = "Input mode: Rates (lambda, mu) - click to switch to Times";
             }
             else
@@ -94,42 +187,126 @@ namespace QueueingCalculator
                 btnMode.Content = "Input mode: Times (E[A], E[S]) - click to switch to Rates";
             }
 
+            // The distribution lists are only needed for M/G/1 (service) and G/G/1 (arrival and service)
+            SetCombo(lblArrDist, cmbArrDist, model == ModelType.GG1);
+            SetCombo(lblSvcDist, cmbSvcDist, model == ModelType.MG1 || model == ModelType.GG1);
+
+            List<string> labels = new List<string>();
+
             if (model == ModelType.MM1)
             {
                 lblInfo.Text = "Poisson arrivals, exponential service, one server. Needs the arrival and service values.";
-                SetField(lbl1, txt1, arrival);
-                SetField(lbl2, txt2, service);
-                SetField(lbl3, txt3, null);
-                SetField(lbl4, txt4, null);
+                labels.AddRange(LabelsFor(DistType.Exponential, "Arrival"));
+                labels.AddRange(LabelsFor(DistType.Exponential, "Service"));
             }
             else if (model == ModelType.MMc)
             {
-                lblInfo.Text = "Poisson arrivals, exponential service, c identical servers with one shared queue. The service value is for ONE server. Needs the arrival and service values and the number of servers.";
-                SetField(lbl1, txt1, arrival);
-                SetField(lbl2, txt2, service);
-                SetField(lbl3, txt3, "Number of servers (c), a whole number from 1 to 200");
-                SetField(lbl4, txt4, null);
+                lblInfo.Text = "Poisson arrivals, exponential service, c identical servers with one shared queue. The service value is for ONE server.";
+                labels.AddRange(LabelsFor(DistType.Exponential, "Arrival"));
+                labels.AddRange(LabelsFor(DistType.Exponential, "Service"));
+                labels.Add("Number of servers (c), a whole number from 1 to 200");
             }
             else if (model == ModelType.MG1)
             {
-                lblInfo.Text = "Poisson arrivals, general service. Needs the arrival and service values and the variance of service time.";
-                SetField(lbl1, txt1, arrival);
-                SetField(lbl2, txt2, service);
-                SetField(lbl3, txt3, "Variance of service time");
-                SetField(lbl4, txt4, null);
+                lblInfo.Text = "Poisson arrivals, general service. Choose the service distribution and type its parameters. The mean and variance of service are calculated for you.";
+                labels.AddRange(LabelsFor(DistType.Exponential, "Arrival"));
+                labels.AddRange(LabelsFor(GetDist(cmbSvcDist), "Service"));
             }
             else
             {
-                lblInfo.Text = "General arrivals, general service (Marchal's approximation). Needs the arrival and service values and both variances.";
-                SetField(lbl1, txt1, arrival);
-                SetField(lbl2, txt2, "Variance of inter-arrival time");
-                SetField(lbl3, txt3, service);
-                SetField(lbl4, txt4, "Variance of service time");
+                lblInfo.Text = "General arrivals, general service (Marchal's approximation). Choose a distribution for arrivals and for service. Means and variances are calculated for you. Choosing Exponential gives the M part.";
+                labels.AddRange(LabelsFor(GetDist(cmbArrDist), "Arrival"));
+                labels.AddRange(LabelsFor(GetDist(cmbSvcDist), "Service"));
             }
+
+            TextBlock[] lbls = { lbl1, lbl2, lbl3, lbl4 };
+            TextBox[] boxes = { txt1, txt2, txt3, txt4 };
+
+            for (int i = 0; i < 4; i++)
+            {
+                if (i < labels.Count)
+                {
+                    SetField(lbls[i], boxes[i], labels[i]);
+                }
+                else
+                {
+                    SetField(lbls[i], boxes[i], null);
+                }
+            }
+        }
+
+        // Reads one distribution from the boxes, starting at box number 'start' (0 = first box).
+        // Calculates the mean and variance. Returns false (after showing a message) if a value is not valid.
+        bool ReadDist(DistType type, string role, int start, out Distribution dist)
+        {
+            dist = null;
+            TextBox[] boxes = { txt1, txt2, txt3, txt4 };
+            double p1 = 0;
+            double p2 = 0;
+
+            if (type == DistType.Exponential)
+            {
+                if (!TryRead(boxes[start], false, out p1))
+                {
+                    MessageBox.Show(role + ": please enter a number above 0.");
+                    return false;
+                }
+                double mean = p1;
+                if (useRates)
+                {
+                    mean = 1 / p1;
+                }
+                dist = Distribution.Exponential(mean);
+                return true;
+            }
+
+            if (type == DistType.Gamma)
+            {
+                if (!TryRead(boxes[start], false, out p1) || !TryRead(boxes[start + 1], false, out p2))
+                {
+                    MessageBox.Show(role + ": shape K and scale theta must be numbers above 0.");
+                    return false;
+                }
+                dist = Distribution.Gamma(p1, p2);
+                return true;
+            }
+
+            if (type == DistType.Normal)
+            {
+                if (!TryRead(boxes[start], false, out p1) || !TryRead(boxes[start + 1], true, out p2))
+                {
+                    MessageBox.Show(role + ": the mean must be above 0 and the standard deviation 0 or more.");
+                    return false;
+                }
+                dist = Distribution.Normal(p1, p2);
+                return true;
+            }
+
+            // Uniform
+            if (!TryRead(boxes[start], true, out p1) || !TryRead(boxes[start + 1], false, out p2) || p2 <= p1)
+            {
+                MessageBox.Show(role + ": the minimum must be 0 or more and the maximum must be above the minimum.");
+                return false;
+            }
+            dist = Distribution.Uniform(p1, p2);
+            return true;
         }
 
         private void cmbModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (loading)
+            {
+                return;
+            }
+            ShowFields();
+        }
+
+        private void cmbDist_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (loading)
+            {
+                return;
+            }
             ShowFields();
         }
 
@@ -142,27 +319,19 @@ namespace QueueingCalculator
         private void btnCalculate_Click(object sender, RoutedEventArgs e)
         {
             ModelType model = GetModel();
-            double a, b, c, d;
+            Distribution arr = null;
+            Distribution svc = null;
             bool stable = false;
             string text = "";
 
             if (model == ModelType.MM1)
             {
-                if (!TryRead(txt1, false, out a) || !TryRead(txt2, false, out b))
+                if (!ReadDist(DistType.Exponential, "Arrival", 0, out arr) || !ReadDist(DistType.Exponential, "Service", 1, out svc))
                 {
-                    MessageBox.Show("Please enter valid positive numbers.");
                     return;
                 }
 
-                double lambda = a;
-                double mu = b;
-                if (!useRates)
-                {
-                    lambda = 1 / a;
-                    mu = 1 / b;
-                }
-
-                stable = calc.MM1(lambda, mu);
+                stable = calc.MM1(1 / arr.Mean, 1 / svc.Mean);
                 if (stable)
                 {
                     text += "Utilization (rho) = " + calc.Rho.ToString("F4") + "\n";
@@ -172,24 +341,20 @@ namespace QueueingCalculator
             else if (model == ModelType.MMc)
             {
                 int servers;
-                if (!TryRead(txt1, false, out a) || !TryRead(txt2, false, out b) || !TryReadServers(txt3, out servers))
+                if (!ReadDist(DistType.Exponential, "Arrival", 0, out arr) || !ReadDist(DistType.Exponential, "Service", 1, out svc))
                 {
-                    MessageBox.Show("Please enter valid positive numbers. The number of servers must be a whole number from 1 to 200.");
+                    return;
+                }
+                if (!TryReadServers(txt3, out servers))
+                {
+                    MessageBox.Show("The number of servers must be a whole number from 1 to 200.");
                     return;
                 }
 
-                double lambda = a;
-                double mu = b;
-                if (!useRates)
-                {
-                    lambda = 1 / a;
-                    mu = 1 / b;
-                }
-
-                stable = calc.MMc(lambda, mu, servers);
+                stable = calc.MMc(1 / arr.Mean, 1 / svc.Mean, servers);
                 if (stable)
                 {
-                    text += "Servers (c)                 = " + calc.Servers + "\n";
+                    text += "Servers (c)                  = " + calc.Servers + "\n";
                     text += "Utilization per server (rho) = " + calc.Rho.ToString("F4") + "\n";
                     text += "Idle proportion              = " + calc.Idle.ToString("F4") + "\n";
                     text += "P0 (system empty)            = " + calc.P0.ToString("F4") + "\n";
@@ -198,55 +363,48 @@ namespace QueueingCalculator
             }
             else if (model == ModelType.MG1)
             {
-                if (!TryRead(txt1, false, out a) || !TryRead(txt2, false, out b) || !TryRead(txt3, true, out c))
+                DistType svcType = GetDist(cmbSvcDist);
+                if (!ReadDist(DistType.Exponential, "Arrival", 0, out arr) || !ReadDist(svcType, "Service", 1, out svc))
                 {
-                    MessageBox.Show("Please enter valid numbers. Variance can be 0, the others must be above 0.");
                     return;
                 }
 
-                double lambda = a;
-                double meanService = b;
-                if (useRates)
-                {
-                    meanService = 1 / b;
-                }
-                else
-                {
-                    lambda = 1 / a;
-                }
-
-                stable = calc.MG1(lambda, meanService, c);
+                stable = calc.MG1(1 / arr.Mean, svc.Mean, svc.Variance);
                 if (stable)
                 {
-                    text += "Service rate (mu) = " + calc.Mu.ToString("F4") + "\n";
+                    text += "Service mean E[S]   = " + svc.Mean.ToString("F4") + "\n";
+                    text += "Service variance    = " + svc.Variance.ToString("F4") + "  (calculated)\n";
+                    text += "Service rate (mu)  = " + calc.Mu.ToString("F4") + "\n";
                     text += "Utilization (rho) = " + calc.Rho.ToString("F4") + "\n";
                     text += "Idle proportion    = " + calc.Idle.ToString("F4") + "\n";
                 }
             }
             else
             {
-                if (!TryRead(txt1, false, out a) || !TryRead(txt2, true, out b) || !TryRead(txt3, false, out c) || !TryRead(txt4, true, out d))
+                DistType arrType = GetDist(cmbArrDist);
+                DistType svcType = GetDist(cmbSvcDist);
+                int arrBoxes = 2;
+                if (arrType == DistType.Exponential)
                 {
-                    MessageBox.Show("Please enter valid numbers. Variances can be 0, the other values must be above 0.");
+                    arrBoxes = 1;
+                }
+
+                if (!ReadDist(arrType, "Arrival", 0, out arr) || !ReadDist(svcType, "Service", arrBoxes, out svc))
+                {
                     return;
                 }
 
-                double meanArrival = a;
-                double meanService = c;
-                if (useRates)
-                {
-                    meanArrival = 1 / a;
-                    meanService = 1 / c;
-                }
-
-                stable = calc.GG1(meanArrival, b, meanService, d);
+                stable = calc.GG1(arr.Mean, arr.Variance, svc.Mean, svc.Variance);
                 if (stable)
                 {
-                    text += "Mean inter-arrival time = " + calc.MeanArrival.ToString("F4") + "\n";
-                    text += "Utilization (rho)       = " + calc.Rho.ToString("F4") + "\n";
-                    text += "Idle proportion          = " + calc.Idle.ToString("F4") + "\n";
-                    text += "Ca^2                    = " + calc.Ca2.ToString("F4") + "\n";
-                    text += "Cs^2                    = " + calc.Cs2.ToString("F4") + "\n";
+                    text += "Arrival mean E[A]     = " + arr.Mean.ToString("F4") + "\n";
+                    text += "Arrival variance      = " + arr.Variance.ToString("F4") + "  (calculated)\n";
+                    text += "Service mean E[S]     = " + svc.Mean.ToString("F4") + "\n";
+                    text += "Service variance      = " + svc.Variance.ToString("F4") + "  (calculated)\n";
+                    text += "Utilization (rho)     = " + calc.Rho.ToString("F4") + "\n";
+                    text += "Idle proportion       = " + calc.Idle.ToString("F4") + "\n";
+                    text += "Ca^2                  = " + calc.Ca2.ToString("F4") + "\n";
+                    text += "Cs^2                  = " + calc.Cs2.ToString("F4") + "\n";
                 }
             }
 

@@ -54,8 +54,8 @@ namespace QueueingCalculator
         private void btnPreset_Click(object sender, RoutedEventArgs e)
         {
             txtNLambda.Text = "1.26";
-            txtNMean.Text = "2.73";
-            txtNVar.Text = "8.06";
+            txtNMean.Text = "2.72";
+            txtNVar.Text = "7.69";
             txtNServers.Text = "6";
 
             txtELambda.Text = "0.82";
@@ -63,7 +63,7 @@ namespace QueueingCalculator
             txtEVar.Text = "1.01";
             txtEServers.Text = "1";
 
-            txtDuration.Text = "87";
+            txtDuration.Text = "88";
             txtPatience.Text = "0";
             txtPayFail.Text = "0";
             chkNormalService.IsChecked = false;

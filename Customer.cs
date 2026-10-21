@@ -1,7 +1,7 @@
 namespace QueueingCalculator
 {
     // One customer. Used by the calculator ("average customer") and by the simulation (one row per customer).
-    // These are properties (not plain fields) so the DataGrid in the Simulation tab can show them.
+   
     public class Customer
     {
         public int Id { get; set; }
