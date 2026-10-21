@@ -323,15 +323,26 @@ namespace QueueingCalculator
             Distribution svc = null;
             bool stable = false;
             string text = "";
+            double a;
+            double b;
 
             if (model == ModelType.MM1)
             {
-                if (!ReadDist(DistType.Exponential, "Arrival", 0, out arr) || !ReadDist(DistType.Exponential, "Service", 1, out svc))
+                if (!TryRead(txt1, false, out a) || !TryRead(txt2, false, out b))
                 {
+                    MessageBox.Show("Please enter valid positive numbers.");
                     return;
                 }
 
-                stable = calc.MM1(1 / arr.Mean, 1 / svc.Mean);
+                double lambda = a;
+                double mu = b;
+                if (!useRates)
+                {
+                    lambda = 1 / a;
+                    mu = 1 / b;
+                }
+
+                stable = calc.MM1(lambda, mu);
                 if (stable)
                 {
                     text += "Utilization (rho) = " + calc.Rho.ToString("F4") + "\n";
@@ -341,8 +352,9 @@ namespace QueueingCalculator
             else if (model == ModelType.MMc)
             {
                 int servers;
-                if (!ReadDist(DistType.Exponential, "Arrival", 0, out arr) || !ReadDist(DistType.Exponential, "Service", 1, out svc))
+                if (!TryRead(txt1, false, out a) || !TryRead(txt2, false, out b))
                 {
+                    MessageBox.Show("Please enter valid positive numbers.");
                     return;
                 }
                 if (!TryReadServers(txt3, out servers))
@@ -351,7 +363,15 @@ namespace QueueingCalculator
                     return;
                 }
 
-                stable = calc.MMc(1 / arr.Mean, 1 / svc.Mean, servers);
+                double lambda = a;
+                double mu = b;
+                if (!useRates)
+                {
+                    lambda = 1 / a;
+                    mu = 1 / b;
+                }
+
+                stable = calc.MMc(lambda, mu, servers);
                 if (stable)
                 {
                     text += "Servers (c)                  = " + calc.Servers + "\n";
