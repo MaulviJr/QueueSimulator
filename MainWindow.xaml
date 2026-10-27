@@ -38,7 +38,7 @@
         </TabItem>
 
         <!-- TAB 2: the simulation -->
-        <TabItem Header="Simulation">
+        <!-- <TabItem Header="Simulation">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="20">
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,10"
@@ -130,7 +130,7 @@
                     </DataGrid>
                 </StackPanel>
             </ScrollViewer>
-        </TabItem>
+        </TabItem> -->
 
     </TabControl>
 </Window>
