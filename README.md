@@ -1,7 +1,8 @@
-# Single Server Queueing Calculator
+# Queueing Calculator
 
-A WPF (.NET) desktop calculator for three single server queueing models: M/M/1, M/G/1 and G/G/1.
-Made for the Modeling and Simulation course. Only the formulas from the class notebook are used.
+A WPF (.NET 8) desktop calculator for single-queue models: **M/M/1, M/M/c, M/G/1 and G/G/1**.
+Made for the CS-577 Modeling and Simulation course (case study: Carrefour, Lucky One Mall, Karachi).
+Only the formulas from the class notebook are used.
 
 ## Requirements
 
@@ -10,69 +11,87 @@ Made for the Modeling and Simulation course. Only the formulas from the class no
 
 ## How to run
 
-Using the command line, inside this folder:
+Command line, inside this folder:
 
     dotnet run
 
-Using Visual Studio: open `QueueingCalculator.csproj` and press F5.
+Visual Studio: open `QueueingCalculator.csproj` and press F5.
 
 ## How to use
 
 1. Select a model from the dropdown.
-2. Enter the values for that model.
-3. Click the "Input mode" button if you want to switch between rates (lambda, mu) and times (E[A], E[S]).
-4. Click Calculate.
-5. Change the model or the values and calculate again.
+2. For M/G/1 and G/G/1, pick the distribution(s) from the dropdown(s) that appear.
+3. Enter the values shown in the input boxes. The labels change with the model and distribution.
+4. (Exponential inputs only) Click the "Input mode" button to switch between rates (lambda, mu) and times (E[A], E[S]).
+5. Click Calculate.
 
-If the system is unstable (rho >= 1), the program shows a message instead of results.
-Invalid input (letters, negative numbers, zero where it is not allowed) shows an error message.
-Use one time unit for everything (for example minutes) and type decimals, such as 0.1 instead of 1/10.
+Notes:
 
-## Inputs
+- Use one time unit for everything (for example minutes) and type decimals such as `0.1`, not `1/10`.
+- Changing the model, a distribution or the input mode clears the boxes and the result.
+- If the system is unstable (rho >= 1), a message is shown instead of results.
+- Invalid input (letters, negatives, zero where not allowed) shows an error message.
 
-The "Input mode" button switches the mean values between rates and times. The program converts them using lambda = 1/E[A] and mu = 1/E[S]. Switching clears the boxes.
+## Models and inputs
 
-| Model | Rates mode | Times mode |
+| Model | Description | Inputs |
 |---|---|---|
-| M/M/1 | lambda, mu | E[A], E[S] |
-| M/G/1 | lambda, mu, variance of service time | E[A], E[S], variance of service time |
-| G/G/1 | lambda, variance of inter-arrival time, mu, variance of service time | E[A], variance of inter-arrival time, E[S], variance of service time |
+| M/M/1 | Poisson arrivals, exponential service, 1 server | Arrival value, service value |
+| M/M/c | Poisson arrivals, exponential service, c identical servers, one shared queue | Arrival value, service value (for ONE server), number of servers c (whole number, 1 to 200) |
+| M/G/1 | Poisson arrivals, general service | Arrival value (exponential), service distribution and its parameters |
+| G/G/1 | General arrivals, general service (Marchal's approximation) | Arrival distribution and parameters, service distribution and parameters |
 
-Variances are always variances of times (time squared). They can be 0. All other values must be greater than 0.
+### Distributions (M/G/1 and G/G/1)
+
+You never type a variance. You type the distribution parameters and the program calculates the mean and variance.
+
+| Distribution | You enter | Mean | Variance | Rules |
+|---|---|---|---|---|
+| Exponential | Rate, or mean time (depends on Input mode) | mean | mean^2 | value > 0 |
+| Gamma | Shape K, scale theta | K * theta | K * theta^2 | both > 0 |
+| Normal | Mean, standard deviation | mean | sd^2 | mean > 0, sd >= 0 |
+| Uniform | Minimum, maximum | (min + max) / 2 | (max - min)^2 / 12 | min >= 0, max > min |
+
+The Input mode button (rates vs. times) only changes Exponential fields, using lambda = 1/E[A] and mu = 1/E[S]. Gamma, Normal and Uniform parameters are the same in both modes.
+
+Choosing Exponential for arrival or service gives the "M" part of the model. In M/G/1 the arrival side is always exponential. In G/G/1 both sides can be changed.
 
 ## Formulas (from the notebook)
 
-M/M/1
+Let lambda = arrival rate, mu = service rate, rho = utilization.
+
+**M/M/1**
 
 - rho = lambda / mu
 - Lq = rho^2 / (1 - rho)
-- Wq = Lq / lambda
-- W = Wq + 1/mu
-- L = lambda * W
-- Idle proportion = 1 - rho
 
-M/G/1
+**M/M/c** (rho is per server)
+
+- a = lambda / mu (offered load)
+- rho = lambda / (c * mu)
+- P0 = 1 / ( sum for n = 0..c-1 of a^n / n!  +  a^c / (c! (1 - rho)) )
+- P(wait) = a^c / (c! (1 - rho)) * P0 (Erlang C)
+- Lq = P(wait) * rho / (1 - rho)
+
+**M/G/1** (Pollaczek-Khinchine)
 
 - mu = 1 / E[S]
 - rho = lambda / mu
 - Lq = (lambda^2 * Var(S) + rho^2) / (2 * (1 - rho))
-- Wq = Lq / lambda
-- W = Wq + 1/mu
-- L = lambda * W
-- Idle proportion = 1 - rho
 
-G/G/1 (Marchal's approximation)
+**G/G/1** (Marchal's approximation)
 
-- lambda = 1 / E[A]
-- mu = 1 / E[S]
-- rho = lambda / mu
+- lambda = 1 / E[A], mu = 1 / E[S], rho = lambda / mu
 - Ca^2 = Var(A) / E[A]^2
 - Cs^2 = Var(S) / E[S]^2
 - Lq = rho^2 (1 + Cs^2) (Ca^2 + rho^2 Cs^2) / (2 (1 - rho) (1 + rho^2 Cs^2))
-- Wq = Lq / lambda
-- W = Wq + 1/mu
-- L = lambda * W
+
+**Common to all models**
+
 - Idle proportion = 1 - rho
+- Wq = Lq / lambda
+- W = Wq + 1 / mu
+- L = lambda * W (Little's Law)
 
 All models need rho < 1 to be stable.
 
@@ -80,34 +99,31 @@ All models need rho < 1 to be stable.
 
 | Output | Meaning |
 |---|---|
-| rho | Server utilization (fraction of time the server is busy) |
-| Idle proportion | Fraction of time the server is idle (1 - rho) |
-| Ca^2, Cs^2 | Squared coefficient of variation of inter-arrival and service times |
+| rho | Server utilization (per server for M/M/c) |
+| Idle proportion | Fraction of time a server is idle (1 - rho) |
+| P0 | Probability the system is empty (M/M/c) |
+| P(customer waits) | Probability an arriving customer has to wait (M/M/c, Erlang C) |
+| Service mean / variance | Calculated from the chosen distribution (M/G/1, G/G/1) |
+| Arrival mean / variance | Calculated from the chosen distribution (G/G/1) |
+| Ca^2, Cs^2 | Squared coefficient of variation of inter-arrival and service times (G/G/1) |
 | Lq | Average number of customers waiting in the queue |
 | L | Average number of customers in the system |
 | Wq | Average waiting time in the queue |
 | W | Average total time in the system |
 
-The "Average customer" section shows the waiting time (Wq), service time and turnaround time (W) of an average customer.
+The "Average customer" section shows the waiting time (Wq), service time (1/mu) and turnaround time (W) of an average customer.
 
-## Project files
+## How the code is organized
+
+The window has four generic input slots (`lbl1/txt1` to `lbl4/txt4`). `ShowFields()` relabels, shows or hides and clears them depending on the selected model, distributions and input mode. `btnCalculate_Click` reads and validates the boxes, calls the matching method in `QueueCalculator`, and prints the result.
 
 | File | Purpose |
 |---|---|
-| `Customer.cs` | Customer attributes: arrival time, start time, service time, end time, waiting time, turnaround time |
-| `ModelType.cs` | The model types: MM1, MG1, GG1 |
-| `QueueCalculator.cs` | The formulas for each model |
-| `MainWindow.xaml` / `MainWindow.xaml.cs` | The window and its button and dropdown logic |
-| `App.xaml` / `App.xaml.cs` | WPF application startup |
+| `App.xaml` / `App.xaml.cs` | WPF startup. `StartupUri` opens `MainWindow.xaml` |
+| `MainWindow.xaml` / `MainWindow.xaml.cs` | The window, field switching, input validation, output text |
+| `QueueCalculator.cs` | The formulas: `MM1`, `MMc`, `MG1`, `GG1` (each returns false if unstable) |
+| `Distribution.cs` | Turns distribution parameters into mean and variance |
+| `ModelType.cs` | Enum of the models: MM1, MMc, MG1, GG1 |
+| `Customer.cs` | Customer attributes: arrival, start, service and end time, waiting and turnaround time |
+| `SimulationEngine.cs` | Simulation engine (see below) |
 | `QueueingCalculator.csproj` | Project file |
-
-## Sample tests (from the notebook, times in minutes)
-
-| Model | Input | Expected result |
-|---|---|---|
-| M/M/1 | lambda = 0.1, mu = 0.125 | rho = 0.8, idle = 0.2, Lq = 3.2, Wq = 32, W = 40, L = 4 |
-| M/G/1 | lambda = 0.1, mu = 0.125, variance = 0.3333 | rho = 0.8, idle = 0.2, Lq = 1.6083, Wq = 16.0833, W = 24.0833, L = 2.4083 |
-| G/G/1 | lambda = 0.1, variance = 20, mu = 0.125, variance = 25 | rho = 0.8, idle = 0.2, Ca^2 = 0.2, Cs^2 = 0.3906, Lq = 0.8010, Wq = 8.0100, W = 16.0100, L = 1.6010 |
-| M/M/1 | lambda = 6, mu = 5 | unstable message |
-
-Times mode gives the same answers. For example, M/M/1 with E[A] = 10 and E[S] = 8 gives the same result as lambda = 0.1 and mu = 0.125.
