@@ -37,18 +37,19 @@
             </ScrollViewer>
         </TabItem>
 
-        <!-- TAB 2: the M/M/c simulation (code in MainWindow.Simulation.cs and SimulationEngine.cs) -->
+        <!-- TAB 2: the simulation with a SEPARATE line in front of every counter
+             (code in MainWindow.Simulation.cs and SimulationEngine.cs) -->
         <TabItem Header="Simulation">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                 <StackPanel Margin="20">
                     <TextBlock TextWrapping="Wrap" Margin="0,0,0,10"
-                               Text="M/M/c simulation: one shared queue (first come, first served) and c identical counters. A customer who finds several idle counters goes to the lowest-numbered one. Use minutes everywhere." />
+                               Text="Multi-counter simulation, like the real shop: every counter has its OWN line (first come, first served inside each line). A new customer joins the line with the fewest people (waiting + being served); an idle counter counts as 0 people, and if lines are equal the lowest-numbered counter is used. Customers do not change line afterwards. Use minutes everywhere." />
                     <Button x:Name="btnPreset" Content="Load Carrefour values" Padding="6"
                             Margin="0,0,0,10" Click="btnPreset_Click" />
 
                     <Grid Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="340" />
+                            <ColumnDefinition Width="400" />
                             <ColumnDefinition Width="120" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
@@ -56,48 +57,37 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="Arrival rate (customers per minute)" Margin="0,5,0,0" />
+                        <TextBlock Grid.Row="0" Text="Arrival rate of the WHOLE shop (customers per minute)" Margin="0,5,0,0" />
                         <TextBox x:Name="txtSimLambda" Grid.Row="0" Grid.Column="1" Text="1.29" Margin="0,2,8,2" />
 
-                        <TextBlock Grid.Row="1" Text="Mean service time of ONE counter (minutes)" Margin="0,5,0,0" />
+                        <TextBlock Grid.Row="1" Text="Mean service time per customer (minutes), all counters combined" Margin="0,5,0,0" />
                         <TextBox x:Name="txtSimMean" Grid.Row="1" Grid.Column="1" Text="2.73" Margin="0,2,8,2" />
 
-                        <TextBlock Grid.Row="2" Text="Number of counters c (1 to 30)" Margin="0,5,0,0" />
+                        <TextBlock Grid.Row="2" Text="Number of counters c (1 to 30), one line each" Margin="0,5,0,0" />
                         <TextBox x:Name="txtSimServers" Grid.Row="2" Grid.Column="1" Text="5" Margin="0,2,8,2" />
 
                         <TextBlock Grid.Row="3" Text="Simulation length (minutes of arrivals)" Margin="0,5,0,0" />
                         <TextBox x:Name="txtSimDuration" Grid.Row="3" Grid.Column="1" Text="88" Margin="0,2,8,2" />
 
-                        <TextBlock Grid.Row="4" Text="Seed (empty = different run each time)" Margin="0,5,0,0" />
-                        <TextBox x:Name="txtSimSeed" Grid.Row="4" Grid.Column="1" Margin="0,2,8,2" />
-
-                        <TextBlock Grid.Row="5" Text="Replications (for the button below)" Margin="0,5,0,0" />
-                        <TextBox x:Name="txtSimReps" Grid.Row="5" Grid.Column="1" Text="75" Margin="0,2,8,2" />
                     </Grid>
 
-                    <CheckBox x:Name="chkClass" IsChecked="True" Margin="0,0,0,10" Content="Class method: Poisson-table gaps between arrivals, service times in whole minutes. Unticked = continuous exponential times." />
-
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                        <Button x:Name="btnRun" Content="Run once" Padding="10,6" Margin="0,0,10,0" Click="btnRun_Click" />
-                        <Button x:Name="btnReplicate" Content="Run replications and compare with formulas" Padding="10,6" Click="btnReplicate_Click" />
-                    </StackPanel>
+                    <Button x:Name="btnRun" Content="Run simulation" Padding="10,6" HorizontalAlignment="Left"
+                            Margin="0,0,0,15" Click="btnRun_Click" />
 
                     <TextBlock x:Name="txtSimResult" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,0,0,15" />
 
                     <TextBlock Text="Gantt chart (one lane per counter)" FontWeight="Bold" Margin="0,0,0,5" />
                     <Canvas x:Name="canGantt" Width="820" Height="200" Background="White" HorizontalAlignment="Left" Margin="0,0,0,15" />
 
-                    <TextBlock Text="Queue length over time" FontWeight="Bold" Margin="0,0,0,5" />
+                    <TextBlock Text="Queue length over time (all lines together)" FontWeight="Bold" Margin="0,0,0,5" />
                     <Canvas x:Name="canQueue" Width="820" Height="260" Background="White" HorizontalAlignment="Left" Margin="0,0,0,15" />
 
                     <TextBlock Text="Average waiting time as the simulation goes on" FontWeight="Bold" Margin="0,0,0,5" />
                     <Canvas x:Name="canWait" Width="820" Height="260" Background="White" HorizontalAlignment="Left" Margin="0,0,0,15" />
 
-                    <TextBlock Text="Utilization of each counter and of the whole system" FontWeight="Bold" Margin="0,0,0,5" />
+                    <TextBlock Text="Utilization of each counter (share of the total service time) and their total" FontWeight="Bold" Margin="0,0,0,5" />
                     <Canvas x:Name="canUtil" Width="820" Height="260" Background="White" HorizontalAlignment="Left" Margin="0,0,0,15" />
 
                     <TextBlock Text="Customer table" FontWeight="Bold" Margin="0,0,0,5" />

@@ -7,12 +7,10 @@ namespace QueueingCalculator
     // What the user types on the Simulation tab.
     public class SimSettings
     {
-        public double ArrivalRate;       // customers per minute (lambda)
-        public double MeanService;       // minutes per customer, for ONE counter (1 / mu)
-        public int Servers = 1;          // number of counters (c)
+        public double ArrivalRate;       // customers per minute for the WHOLE shop (lambda)
+        public double MeanService;       // minutes per customer, pooled over all counters (1 / mu)
+        public int Servers = 1;          // number of counters (c), each with its OWN queue
         public double Duration = 88;     // customers keep arriving until this time (minutes)
-        public bool ClassMethod = true;  // true  = class method: Poisson-table gaps, whole minutes
-                                         // false = continuous exponential gaps and service times
     }
 
     // One point of a step graph (the value holds from Time until the next point).
@@ -31,7 +29,9 @@ namespace QueueingCalculator
         public double TotalTime;            // first start to last end
         public double[] BusyTime;           // per counter (index 0 = counter 1)
         public int[] Served;                // per counter
-        public double[] Utilization;        // per counter = busy time / total time
+        public double[] Utilization;        // per counter = busy time / total time (busy % of the clock)
+        public double[] ShareOfWork;        // per counter = its service time / service time of ALL counters
+                                            // (the professor's utilization: always adds up to 1)
         public double TotalUtilization;     // total busy time / (c x total time)
 
         public double AvgInterArrival;
@@ -39,11 +39,12 @@ namespace QueueingCalculator
         public double AvgWait;              // Wq  (same as response time here)
         public double AvgTurnaround;        // W
         public int WaitedCount;             // customers with wait > 0
-        public double AvgQueueLength;       // Lq, time-average of the queue graph
+        public double AvgQueueLength;       // Lq, time-average of the queue graph (all lines together)
         public double AvgInSystem;          // L,  time-average of the system graph
-        public int MaxQueue;
+        public int MaxQueue;                // longest total number waiting (all lines together)
+        public int[] MaxQueuePerCounter;    // longest line in front of each counter (people waiting, not being served)
 
-        public List<StepPoint> QueueSteps = new List<StepPoint>();    // queue length over time
+        public List<StepPoint> QueueSteps = new List<StepPoint>();    // total waiting over time
         public List<StepPoint> SystemSteps = new List<StepPoint>();   // customers in system over time
     }
 
@@ -106,21 +107,14 @@ namespace QueueingCalculator
             // STEP 1: generate the customers (arrival time and service time).
             // Customer 1 arrives at time 0, as in the class example.
             double meanGap = 1 / s.ArrivalRate;
-            List<double> table = null;
-            if (s.ClassMethod)
-            {
-                table = PoissonTable(meanGap);
-            }
+            List<double> table = PoissonTable(meanGap);
 
             double t = 0;
             int id = 1;
             while (t <= s.Duration)
             {
-                double service = ExpTime(s.MeanService, rng);
-                if (s.ClassMethod)
-                {
-                    service = Math.Round(service, MidpointRounding.AwayFromZero);   // whole minutes, like ROUND(...,0) in Excel
-                }
+                // service time in whole minutes, like ROUND(...,0) in Excel
+                double service = Math.Round(ExpTime(s.MeanService, rng), MidpointRounding.AwayFromZero);
 
                 Customer cust = new Customer();
                 cust.Id = id;
@@ -131,44 +125,46 @@ namespace QueueingCalculator
                 r.Customers.Add(cust);
                 id++;
 
-                if (s.ClassMethod)
-                {
-                    t += PoissonGap(table, rng);
-                }
-                else
-                {
-                    t += ExpTime(meanGap, rng);
-                }
+                t += PoissonGap(table, rng);     // gap to the next arrival, from the Poisson table
             }
 
-            // STEP 2: assign every customer to a counter (FIFO: customers are already in arrival order).
-            // freeAt[i] = the time counter i+1 becomes free. All counters are free at time 0.
+            // STEP 2: every counter has its OWN line (like in the shop).
+            // When a customer arrives he looks at all the lines and joins the SHORTEST one
+            // (people waiting + the person being served). An idle counter has 0 people, so it is
+            // chosen first. If two lines are equally short, the lowest-numbered counter wins
+            // (the rule from the lecture). After joining, the customer never changes line.
+            // Inside one line the service is first come, first served.
+            //
+            // endTimes[i] = end times of everybody who joined line i so far.
+            // freeAt[i]   = the time counter i+1 finishes the last customer in its line.
+            List<double>[] endTimes = new List<double>[c];
+            for (int i = 0; i < c; i++)
+            {
+                endTimes[i] = new List<double>();
+            }
             double[] freeAt = new double[c];
 
-            foreach (Customer cust in r.Customers)
+            foreach (Customer cust in r.Customers)     // already in arrival order
             {
-                int k = -1;
+                int k = 0;
+                int fewest = int.MaxValue;
 
-                // Rule from the lecture: if no priority is given, the lowest-numbered idle counter is used.
                 for (int i = 0; i < c; i++)
                 {
-                    if (freeAt[i] <= cust.ArrivalTime)
+                    // people still in line i at this moment = those who have not finished yet
+                    int inLine = 0;
+                    foreach (double end in endTimes[i])
                     {
-                        k = i;
-                        break;
-                    }
-                }
-
-                // Nobody is idle: the customer waits for the counter that becomes free first.
-                if (k == -1)
-                {
-                    k = 0;
-                    for (int i = 1; i < c; i++)
-                    {
-                        if (freeAt[i] < freeAt[k])
+                        if (end > cust.ArrivalTime)
                         {
-                            k = i;
+                            inLine++;
                         }
+                    }
+
+                    if (inLine < fewest)       // "<" (not "<=") keeps the lowest number when tied
+                    {
+                        fewest = inLine;
+                        k = i;
                     }
                 }
 
@@ -176,6 +172,7 @@ namespace QueueingCalculator
                 cust.StartTime = Math.Max(cust.ArrivalTime, freeAt[k]);
                 cust.EndTime = cust.StartTime + cust.ServiceTime;
                 freeAt[k] = cust.EndTime;
+                endTimes[k].Add(cust.EndTime);
             }
 
             // STEP 3: performance measures.
@@ -212,6 +209,16 @@ namespace QueueingCalculator
                 r.TotalUtilization = totalBusy / (c * r.TotalTime);
             }
 
+            // Professor's method: counter's total service time / sum of service times of all counters.
+            r.ShareOfWork = new double[c];
+            if (totalBusy > 0)
+            {
+                for (int i = 0; i < c; i++)
+                {
+                    r.ShareOfWork[i] = r.BusyTime[i] / totalBusy;
+                }
+            }
+
             r.AvgService = r.Customers.Average(x => x.ServiceTime);
             r.AvgWait = r.Customers.Average(x => x.WaitingTime);
             r.AvgTurnaround = r.Customers.Average(x => x.TurnaroundTime);
@@ -221,9 +228,15 @@ namespace QueueingCalculator
             }
 
             // Queue length and number-in-system graphs.
-            // A customer is in the queue from arrival until start, and in the system from arrival until end.
+            // A customer is in a queue from arrival until start, and in the system from arrival until end.
+            // The total queue graph adds up all the lines. We also keep the events of each line separately.
             List<KeyValuePair<double, int>> queueEvents = new List<KeyValuePair<double, int>>();
             List<KeyValuePair<double, int>> systemEvents = new List<KeyValuePair<double, int>>();
+            List<KeyValuePair<double, int>>[] lineEvents = new List<KeyValuePair<double, int>>[c];
+            for (int i = 0; i < c; i++)
+            {
+                lineEvents[i] = new List<KeyValuePair<double, int>>();
+            }
 
             foreach (Customer cust in r.Customers)
             {
@@ -231,6 +244,8 @@ namespace QueueingCalculator
                 {
                     queueEvents.Add(new KeyValuePair<double, int>(cust.ArrivalTime, 1));
                     queueEvents.Add(new KeyValuePair<double, int>(cust.StartTime, -1));
+                    lineEvents[cust.Server - 1].Add(new KeyValuePair<double, int>(cust.ArrivalTime, 1));
+                    lineEvents[cust.Server - 1].Add(new KeyValuePair<double, int>(cust.StartTime, -1));
                 }
                 systemEvents.Add(new KeyValuePair<double, int>(cust.ArrivalTime, 1));
                 systemEvents.Add(new KeyValuePair<double, int>(cust.EndTime, -1));
@@ -247,6 +262,14 @@ namespace QueueingCalculator
                 r.AvgInSystem = systemArea / lastEnd;
             }
             r.MaxQueue = (int)r.QueueSteps.Max(p => p.Value);
+
+            r.MaxQueuePerCounter = new int[c];
+            for (int i = 0; i < c; i++)
+            {
+                double area;
+                List<StepPoint> steps = BuildSteps(lineEvents[i], lastEnd, out area);
+                r.MaxQueuePerCounter[i] = (int)steps.Max(p => p.Value);
+            }
 
             return r;
         }

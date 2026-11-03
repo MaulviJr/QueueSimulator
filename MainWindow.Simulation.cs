@@ -30,123 +30,20 @@ namespace QueueingCalculator
             txtSimMean.Text = "2.73";
             txtSimServers.Text = "5";
             txtSimDuration.Text = "88";
-            txtSimSeed.Text = "";
-            txtSimReps.Text = "75";
-            chkClass.IsChecked = true;
         }
 
-        // One run: shows the result text, the customer table and all four graphs.
+        // Runs the simulation once: shows the result text, the customer table and all four graphs.
         private void btnRun_Click(object sender, RoutedEventArgs e)
         {
-            int? seed;
-            SimSettings s = ReadSimSettings(out seed);
+            SimSettings s = ReadSimSettings();
             if (s == null)
             {
                 return;
             }
 
-            Random rng;
-            if (seed.HasValue)
-            {
-                rng = new Random(seed.Value);
-            }
-            else
-            {
-                rng = new Random();
-            }
-
-            SimResult r = SimulationEngine.Run(s, rng);
+            SimResult r = SimulationEngine.Run(s, new Random());
             txtSimResult.Text = RunText(r, s);
             ShowRun(r);
-        }
-
-        // Many runs: averages the results and compares them with the M/M/c formulas.
-        private void btnReplicate_Click(object sender, RoutedEventArgs e)
-        {
-            int? seed;
-            SimSettings s = ReadSimSettings(out seed);
-            if (s == null)
-            {
-                return;
-            }
-
-            int reps;
-            if (!int.TryParse(txtSimReps.Text, out reps) || reps < 1 || reps > 1000)
-            {
-                MessageBox.Show("Replications must be a whole number from 1 to 1000.");
-                return;
-            }
-
-            List<double> wq = new List<double>();
-            List<double> w = new List<double>();
-            List<double> lq = new List<double>();
-            List<double> l = new List<double>();
-            List<double> util = new List<double>();
-            List<double> pWait = new List<double>();
-            double[] counterUtil = new double[s.Servers];
-            SimResult first = null;
-
-            for (int i = 0; i < reps; i++)
-            {
-                Random rng;
-                if (seed.HasValue)
-                {
-                    rng = new Random(seed.Value + i);     // a different, but repeatable, run each time
-                }
-                else
-                {
-                    rng = new Random();
-                }
-
-                SimResult r = SimulationEngine.Run(s, rng);
-                if (i == 0)
-                {
-                    first = r;
-                }
-
-                wq.Add(r.AvgWait);
-                w.Add(r.AvgTurnaround);
-                lq.Add(r.AvgQueueLength);
-                l.Add(r.AvgInSystem);
-                util.Add(r.TotalUtilization);
-                pWait.Add((double)r.WaitedCount / r.Customers.Count);
-                for (int k = 0; k < s.Servers; k++)
-                {
-                    counterUtil[k] += r.Utilization[k];
-                }
-            }
-
-            // Analytical answer (same formulas as the Calculator tab)
-            QueueCalculator q = new QueueCalculator();
-            q.MMc(s.ArrivalRate, 1 / s.MeanService, s.Servers);
-
-            string text = "";
-            text += "Replications = " + reps + "   (each one is a full run of " + s.Duration + " minutes)\n";
-            text += "95% half-width = 1.96 x s / sqrt(n)\n\n";
-            text += string.Format("{0,-30}{1,10}{2,12}{3,14}\n", "Measure", "Simulated", "+/- 95%", "M/M/c formula");
-            text += SimRow("Avg wait Wq", wq, q.Wq);
-            text += SimRow("Avg turnaround W", w, q.W);
-            text += SimRow("Avg queue length Lq", lq, q.Lq);
-            text += SimRow("Avg in system L", l, q.L);
-            text += SimRow("P(customer waits)", pWait, q.ProbWait);
-            text += SimRow("Total utilization (rho)", util, q.Rho);
-
-            text += "\nAverage utilization of each counter:\n";
-            for (int k = 0; k < s.Servers; k++)
-            {
-                text += string.Format("  Counter {0,-3}{1,10:F4}\n", k + 1, counterUtil[k] / reps);
-            }
-
-            if (s.ClassMethod)
-            {
-                text += "\nNote: the class method uses whole-minute gaps and service times, so it does not follow the\n";
-                text += "pure M/M/c formulas exactly. Untick it to compare against the formulas.\n";
-            }
-            text += "Note: every run starts with an empty system, so short runs read a little lower than the formulas.\n";
-            text += "The table and graphs below show replication 1.";
-
-            txtSimResult.Text = text;
-            ShowRun(first);
         }
 
         // ---------------------------------------------------------------
@@ -154,9 +51,8 @@ namespace QueueingCalculator
         // ---------------------------------------------------------------
 
         // Returns null (after showing a message) if something is not valid.
-        SimSettings ReadSimSettings(out int? seed)
+        SimSettings ReadSimSettings()
         {
-            seed = null;
             double lambda;
             double mean;
             double duration;
@@ -184,6 +80,7 @@ namespace QueueingCalculator
             }
 
             // First test of every queue: it must be stable.
+            // lambda is for the whole shop, so each counter gets about lambda / c of the customers.
             double rho = lambda * mean / servers;
             if (rho >= 1)
             {
@@ -191,24 +88,11 @@ namespace QueueingCalculator
                 return null;
             }
 
-            string seedText = txtSimSeed.Text.Trim();
-            if (seedText != "")
-            {
-                int value;
-                if (!int.TryParse(seedText, out value))
-                {
-                    MessageBox.Show("The seed must be a whole number, or empty.");
-                    return null;
-                }
-                seed = value;
-            }
-
             SimSettings s = new SimSettings();
             s.ArrivalRate = lambda;
             s.MeanService = mean;
             s.Servers = servers;
             s.Duration = duration;
-            s.ClassMethod = chkClass.IsChecked == true;
             return s;
         }
 
@@ -228,10 +112,10 @@ namespace QueueingCalculator
             text += "Avg wait Wq              = " + r.AvgWait.ToString("F4") + "\n";
             text += "Avg turnaround W         = " + r.AvgTurnaround.ToString("F4") + "\n";
             text += "Customers who waited     = " + r.WaitedCount + " of " + n + "  (" + (100.0 * r.WaitedCount / n).ToString("F1") + "%)\n";
-            text += "Avg queue length Lq      = " + r.AvgQueueLength.ToString("F4") + "\n";
+            text += "Avg queue length Lq      = " + r.AvgQueueLength.ToString("F4") + "  (all lines together)\n";
             text += "Avg in system L          = " + r.AvgInSystem.ToString("F4") + "\n";
-            text += "Longest queue            = " + r.MaxQueue + "\n";
-            text += "Total utilization        = " + r.TotalUtilization.ToString("F4");
+            text += "Longest total queue      = " + r.MaxQueue + "  (all lines together)\n";
+            text += "System utilization      = " + r.TotalUtilization.ToString("F4") + "  (busy time / (c x simulation time))";
 
             bool ok = r.TotalUtilization <= 1.0 + 1e-9;
             foreach (double u in r.Utilization)
@@ -250,34 +134,18 @@ namespace QueueingCalculator
                 text += "   (check FAILED: a utilization is above 1)\n";
             }
 
-            text += "\n" + string.Format("{0,-10}{1,7}{2,12}{3,14}\n", "Counter", "Served", "Busy time", "Utilization");
+            // "Utilization" = busy time / total service time of all counters (as done in class, adds up to 1).
+            // "Busy % of time" = busy time / simulation time (can be up to 1 for every counter).
+            text += "\n" + string.Format("{0,-9}{1,7}{2,11}{3,13}{4,15}{5,13}\n", "Counter", "Served", "Busy time", "Utilization", "Busy % of time", "Longest line");
+            double sumShare = 0;
             for (int i = 0; i < r.Servers; i++)
             {
-                text += string.Format("{0,-10}{1,7}{2,12:F2}{3,14:F4}\n", i + 1, r.Served[i], r.BusyTime[i], r.Utilization[i]);
+                sumShare += r.ShareOfWork[i];
+                text += string.Format("{0,-9}{1,7}{2,11:F2}{3,13:F4}{4,15:F4}{5,13}\n", i + 1, r.Served[i], r.BusyTime[i], r.ShareOfWork[i], r.Utilization[i], r.MaxQueuePerCounter[i]);
             }
+            text += string.Format("{0,-9}{1,7}{2,11:F2}{3,13:F4}\n", "Total", n, r.BusyTime.Sum(), sumShare);
+            text += "Utilization = counter's service time / total service time of all counters (adds up to 1).\n";
             return text;
-        }
-
-        // One row of the replication table: mean, 95% half-width and the formula value.
-        string SimRow(string name, List<double> values, double formula)
-        {
-            return string.Format("{0,-30}{1,10:F4}{2,12:F4}{3,14:F4}\n", name, values.Average(), HalfWidth(values), formula);
-        }
-
-        static double HalfWidth(List<double> values)
-        {
-            if (values.Count < 2)
-            {
-                return 0;
-            }
-            double m = values.Average();
-            double sum = 0;
-            foreach (double x in values)
-            {
-                sum += (x - m) * (x - m);
-            }
-            double sd = Math.Sqrt(sum / (values.Count - 1));
-            return 1.96 * sd / Math.Sqrt(values.Count);
         }
 
         void ShowRun(SimResult r)
@@ -509,13 +377,13 @@ namespace QueueingCalculator
                 Brush fill;
                 if (i < r.Servers)
                 {
-                    value = r.Utilization[i];
+                    value = r.ShareOfWork[i];
                     label = "C" + (i + 1);
                     fill = new SolidColorBrush(Palette[i % Palette.Length]);
                 }
                 else
                 {
-                    value = r.TotalUtilization;
+                    value = r.ShareOfWork.Sum();
                     label = "Total";
                     fill = Brushes.SteelBlue;
                 }
@@ -578,6 +446,7 @@ namespace QueueingCalculator
                 rect.Stroke = Brushes.White;
                 rect.StrokeThickness = 0.5;
                 rect.ToolTip = "Customer " + cust.Id
+                    + "\nCounter " + cust.Server
                     + "\nArrival " + cust.ArrivalTime.ToString("F2")
                     + "\nStart " + cust.StartTime.ToString("F2")
                     + "\nEnd " + cust.EndTime.ToString("F2")
